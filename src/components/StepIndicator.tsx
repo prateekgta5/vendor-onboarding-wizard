@@ -9,7 +9,7 @@ interface StepIndicatorProps {
 
 const StepIndicator: React.FC<StepIndicatorProps> = ({ steps, currentStep }) => {
   return (
-    <div className="flex items-center justify-between w-full py-4 px-2">
+    <div className="flex items-center justify-between w-full py-4 px-2 mb-4 overflow-x-auto">
       {steps.map((step, i) => (
         <div
           key={i}
@@ -28,7 +28,7 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({ steps, currentStep }) => 
           
           {/* Step circle */}
           <div
-            className={`z-10 flex items-center justify-center w-8 h-8 rounded-full font-medium text-sm ${
+            className={`z-10 flex items-center justify-center w-8 h-8 rounded-full font-medium text-sm transition-all duration-300 ${
               currentStep > i + 1
                 ? "bg-basecamp-primary text-white"
                 : currentStep === i + 1
@@ -40,8 +40,9 @@ const StepIndicator: React.FC<StepIndicatorProps> = ({ steps, currentStep }) => 
           </div>
           
           {/* Step label */}
-          <p className={`text-xs mt-1 text-center ${
-            currentStep === i + 1 ? "font-medium text-basecamp-primary" : "text-gray-500"
+          <p className={`text-xs mt-1 text-center font-medium transition-colors ${
+            currentStep === i + 1 ? "text-basecamp-primary" : 
+            currentStep > i + 1 ? "text-basecamp-primary/80" : "text-gray-500"
           }`}>
             {step}
           </p>
