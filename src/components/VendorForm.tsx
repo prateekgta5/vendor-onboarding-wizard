@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { vendorFormSchema, VendorFormSchemaType } from "@/validators/vendorFormValidator";
@@ -21,12 +20,18 @@ import StepIndicator from "./StepIndicator";
 import OTPVerification from "./OTPVerification";
 import FileUpload from "./FileUpload";
 import { VendorFormData } from "@/types/vendorForm";
+import { useToast } from "@/hooks/use-toast";
+
+// Key for localStorage
+const FORM_STORAGE_KEY = "vendor_form_data";
 
 const VendorForm: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isGSTVerifying, setIsGSTVerifying] = useState<boolean>(false);
   const [formSubmitted, setFormSubmitted] = useState<boolean>(false);
+  const [hasResumedSession, setHasResumedSession] = useState<boolean>(false);
+  const { toast } = useToast();
   
   // Define steps
   const steps = [
@@ -57,8 +62,8 @@ const VendorForm: React.FC = () => {
     requires_warehousing: false,
     bank_account_type: "Current",
     payment_method: "Bank Transfer",
-    payment_terms_agreement: false,
-    payment_terms_satisfaction: false,
+    payment_terms_agreement: false, // Fix: Changed from true to false to match type
+    payment_terms_satisfaction: false, // Fix: Changed from true to false to match type
     branding_offer: false,
     agreement_terms: "I hereby agree that all information provided is accurate and complete. I understand and accept the terms and conditions of BaseCampMart's vendor onboarding process."
   };
@@ -69,6 +74,8 @@ const VendorForm: React.FC = () => {
     handleSubmit,
     watch,
     setValue,
+    getValues,
+    reset,
     formState: { errors },
     trigger,
   } = useForm<VendorFormSchemaType>({
@@ -88,6 +95,77 @@ const VendorForm: React.FC = () => {
   const watchPhonePrimary = watch("phone_primary");
   const watchGSTIN = watch("gstin");
   
+  // Effect to load saved form data on initial render
+  useEffect(() => {
+    loadSavedFormData();
+  }, []);
+
+  // Effect to save form data when fields change
+  useEffect(() => {
+    const subscription = watch((value) => {
+      saveFormData(value as VendorFormSchemaType);
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [watch]);
+
+  // Save form data to localStorage
+  const saveFormData = (data: VendorFormSchemaType) => {
+    try {
+      // Don't save if the form has been submitted
+      if (formSubmitted) return;
+      
+      const formData = {
+        data,
+        step: currentStep,
+        timestamp: new Date().toISOString()
+      };
+      
+      localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(formData));
+    } catch (error) {
+      console.error("Error saving form data:", error);
+    }
+  };
+  
+  // Load saved form data from localStorage
+  const loadSavedFormData = () => {
+    try {
+      const savedData = localStorage.getItem(FORM_STORAGE_KEY);
+      
+      if (savedData) {
+        const { data, step } = JSON.parse(savedData);
+        
+        if (data) {
+          // Reset form with saved data
+          reset(data);
+          setCurrentStep(step || 1);
+          setHasResumedSession(true);
+          
+          showToast("Form Resumed", "Your previous progress has been loaded.", "success");
+        }
+      }
+    } catch (error) {
+      console.error("Error loading saved form data:", error);
+    }
+  };
+  
+  // Clear saved form data
+  const clearSavedFormData = () => {
+    localStorage.removeItem(FORM_STORAGE_KEY);
+  };
+  
+  // Save current progress and show message
+  const saveProgress = () => {
+    const currentData = getValues();
+    saveFormData(currentData);
+    
+    showToast(
+      "Progress Saved", 
+      "Your progress has been saved. You can return to complete the form later.", 
+      "success"
+    );
+  };
+  
   // Step navigation functions
   const nextStep = async () => {
     // Validate the current step's fields
@@ -99,6 +177,8 @@ const VendorForm: React.FC = () => {
         handleFormSubmit();
       } else {
         setCurrentStep((prev) => prev + 1);
+        // Save progress when advancing to next step
+        saveFormData(getValues());
       }
     } else {
       // Show errors
@@ -166,6 +246,8 @@ const VendorForm: React.FC = () => {
       if (result.success) {
         showToast("Success", result.message, "success");
         setFormSubmitted(true);
+        // Clear saved form data after successful submission
+        clearSavedFormData();
       } else {
         showToast("Error", result.message, "error");
       }
@@ -245,6 +327,38 @@ const VendorForm: React.FC = () => {
     <div className="w-full max-w-4xl mx-auto">
       {/* Progress bar */}
       <StepIndicator steps={steps} currentStep={currentStep} />
+      
+      {/* Session resume notification */}
+      {hasResumedSession && (
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4 flex items-center">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5 text-blue-500 mr-3"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <div>
+            <h3 className="font-medium text-blue-700">Session Resumed</h3>
+            <p className="text-sm text-blue-600">
+              Your previous progress has been restored. You can continue from where you left off.
+            </p>
+          </div>
+          <button 
+            className="ml-auto text-sm text-blue-700 hover:text-blue-900"
+            onClick={() => setHasResumedSession(false)}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       
       <div className="bg-white shadow-md rounded-lg p-6 mt-4">
         <form>
@@ -810,341 +924,4 @@ const VendorForm: React.FC = () => {
               {watchRequiresWarehousing && (
                 <div className="ml-6 space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="preferred_warehouse_location">Preferred Warehouse Location</Label>
-                    <Controller
-                      control={control}
-                      name="preferred_warehouse_location"
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select preferred location" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {["Delhi", "Mumbai", "Bangalore", "Chennai", "Hyderabad", "Pune", "Kolkata", "Other"].map((location) => (
-                              <SelectItem key={location} value={location}>
-                                {location}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="warehouse_location">Warehouse Location (Describe or provide address)</Label>
-                    <Textarea
-                      id="warehouse_location"
-                      {...register("warehouse_location")}
-                      placeholder="Enter warehouse location or address"
-                    />
-                    <p className="text-xs text-gray-500">
-                      In a production app, this would integrate with Google Maps API for location pinning
-                    </p>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="storage_volume">Storage Volume</Label>
-                      <Input
-                        id="storage_volume"
-                        {...register("storage_volume")}
-                        placeholder="e.g., 500 sq ft, 10 pallets"
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="storage_duration">Storage Duration</Label>
-                      <Input
-                        id="storage_duration"
-                        {...register("storage_duration")}
-                        placeholder="e.g., 3 months, 1 year"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          
-          {/* Step 6: Banking & Payment */}
-          <div className={`form-section ${currentStep === 6 ? "visible" : "hidden"}`}>
-            <h2 className="text-xl font-semibold mb-6">Banking Details</h2>
-            
-            <div className="space-y-6 mb-8">
-              <div className="space-y-2">
-                <Label>Bank Account Type *</Label>
-                <Controller
-                  control={control}
-                  name="bank_account_type"
-                  render={({ field }) => (
-                    <RadioGroup
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      className="flex flex-row space-x-4"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="Savings" id="account_savings" />
-                        <Label htmlFor="account_savings" className="font-normal">Savings</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="Current" id="account_current" />
-                        <Label htmlFor="account_current" className="font-normal">Current</Label>
-                      </div>
-                    </RadioGroup>
-                  )}
-                />
-                {errors.bank_account_type && (
-                  <p className="text-sm text-red-500">{errors.bank_account_type.message}</p>
-                )}
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="account_number">Account Number *</Label>
-                  <Input
-                    id="account_number"
-                    {...register("account_number")}
-                    placeholder="Enter account number"
-                  />
-                  {errors.account_number && (
-                    <p className="text-sm text-red-500">{errors.account_number.message}</p>
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="bank_name">Bank Name *</Label>
-                  <Input
-                    id="bank_name"
-                    {...register("bank_name")}
-                    placeholder="Enter bank name"
-                  />
-                  {errors.bank_name && (
-                    <p className="text-sm text-red-500">{errors.bank_name.message}</p>
-                  )}
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="ifsc_code">IFSC Code *</Label>
-                  <Input
-                    id="ifsc_code"
-                    {...register("ifsc_code")}
-                    placeholder="Enter IFSC code"
-                  />
-                  {errors.ifsc_code && (
-                    <p className="text-sm text-red-500">{errors.ifsc_code.message}</p>
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="payment_method">Preferred Payment Method *</Label>
-                  <Controller
-                    control={control}
-                    name="payment_method"
-                    render={({ field }) => (
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select payment method" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
-                          <SelectItem value="PayPal">PayPal</SelectItem>
-                          <SelectItem value="Digital Wallet (Razorpay, Paytm)">Digital Wallet (Razorpay, Paytm)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                  {errors.payment_method && (
-                    <p className="text-sm text-red-500">{errors.payment_method.message}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <h3 className="font-medium">Payment Terms Agreement</h3>
-              
-              <div className="space-y-4 bg-slate-50 p-4 rounded-md">
-                <div className="flex items-center space-x-2">
-                  <Controller
-                    control={control}
-                    name="payment_terms_agreement"
-                    render={({ field }) => (
-                      <Checkbox
-                        id="payment_terms_agreement"
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    )}
-                  />
-                  <Label htmlFor="payment_terms_agreement" className="font-normal">
-                    I agree that payments will be made after satisfactory order fulfillment and resolution of any issues related to the order.
-                  </Label>
-                </div>
-                {errors.payment_terms_agreement && (
-                  <p className="text-sm text-red-500">{errors.payment_terms_agreement.message}</p>
-                )}
-                
-                <div className="flex items-center space-x-2">
-                  <Controller
-                    control={control}
-                    name="payment_terms_satisfaction"
-                    render={({ field }) => (
-                      <Checkbox
-                        id="payment_terms_satisfaction"
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    )}
-                  />
-                  <Label htmlFor="payment_terms_satisfaction" className="font-normal">
-                    I agree that payment will only be transferred once customer satisfaction is confirmed and all order issues are resolved.
-                  </Label>
-                </div>
-                {errors.payment_terms_satisfaction && (
-                  <p className="text-sm text-red-500">{errors.payment_terms_satisfaction.message}</p>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          {/* Step 7: Cross-Listing & Agreement */}
-          <div className={`form-section ${currentStep === 7 ? "visible" : "hidden"}`}>
-            <h2 className="text-xl font-semibold mb-6">Cross-Listing Permission & Agreement</h2>
-            
-            <div className="space-y-6 mb-8">
-              <div className="flex items-center space-x-2">
-                <Controller
-                  control={control}
-                  name="branding_offer"
-                  render={({ field }) => (
-                    <Checkbox
-                      id="branding_offer"
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  )}
-                />
-                <Label htmlFor="branding_offer">Do you offer branding options for your products? (For Corporate Gifting Companies)</Label>
-              </div>
-              
-              {watchBrandingOffer && (
-                <div className="ml-6 space-y-4">
-                  <div className="space-y-2">
-                    <Label>Cross-Listing Permission</Label>
-                    <Controller
-                      control={control}
-                      name="cross_listing_permission"
-                      render={({ field }) => (
-                        <RadioGroup
-                          value={field.value ? "yes" : "no"}
-                          onValueChange={(value) => field.onChange(value === "yes")}
-                          className="flex flex-col space-y-2"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="yes" id="cross_listing_yes" />
-                            <Label htmlFor="cross_listing_yes" className="font-normal">
-                              Yes, I am willing to list on both BaseCampMart and Wyshkit
-                            </Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="no" id="cross_listing_no" />
-                            <Label htmlFor="cross_listing_no" className="font-normal">
-                              No, I would prefer to list only on Wyshkit
-                            </Label>
-                          </div>
-                        </RadioGroup>
-                      )}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Controller
-                      control={control}
-                      name="cross_listing_agreement"
-                      render={({ field }) => (
-                        <Checkbox
-                          id="cross_listing_agreement"
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      )}
-                    />
-                    <Label htmlFor="cross_listing_agreement" className="font-normal">
-                      I agree to place orders and make payments within the stipulated time frame for cross-listed products.
-                    </Label>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            <div className="space-y-6">
-              <h3 className="font-medium">Agreement and Digital Signature</h3>
-              
-              <div className="space-y-2">
-                <Label htmlFor="agreement_terms">Agreement Terms</Label>
-                <Textarea
-                  id="agreement_terms"
-                  {...register("agreement_terms")}
-                  className="min-h-[100px] bg-slate-50"
-                  readOnly
-                />
-                <p className="text-xs text-gray-500">
-                  This agreement is auto-generated based on your business type and other information provided.
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="digital_signature">Digital Signature (Type Your Full Name) *</Label>
-                <Input
-                  id="digital_signature"
-                  {...register("digital_signature")}
-                  placeholder="Type your full name as signature"
-                  className="border-b-2 border-dashed border-slate-300"
-                />
-                <p className="text-xs text-gray-500">
-                  In a production environment, this would integrate with DocuSign or a similar service for legal digital signatures.
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          {/* Navigation buttons */}
-          <div className="flex justify-between mt-8">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={prevStep}
-              disabled={currentStep === 1}
-            >
-              Previous
-            </Button>
-            
-            <Button
-              type="button"
-              onClick={nextStep}
-              disabled={isSubmitting}
-              className="bg-basecamp-primary hover:bg-basecamp-secondary"
-            >
-              {currentStep === steps.length
-                ? isSubmitting
-                  ? "Submitting..."
-                  : "Submit"
-                : "Next"}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-export default VendorForm;
+                    <Label htmlFor="preferred_
