@@ -62,8 +62,8 @@ const VendorForm: React.FC = () => {
     requires_warehousing: false,
     bank_account_type: "Current",
     payment_method: "Bank Transfer",
-    payment_terms_agreement: true, // Changed from false to true
-    payment_terms_satisfaction: true, // Changed from false to true
+    payment_terms_agreement: true,
+    payment_terms_satisfaction: true,
     branding_offer: false,
     agreement_terms: "I hereby agree that all information provided is accurate and complete. I understand and accept the terms and conditions of BaseCampMart's vendor onboarding process."
   };
@@ -925,4 +925,5 @@ const VendorForm: React.FC = () => {
                 <div className="ml-6 space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="preferred_warehouse_location">Preferred Warehouse Location</Label>
-                    <
+                    <Controller
+                      control={control}
