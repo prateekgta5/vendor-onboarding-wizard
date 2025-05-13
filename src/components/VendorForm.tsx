@@ -927,3 +927,4 @@ const VendorForm: React.FC = () => {
                     <Label htmlFor="preferred_warehouse_location">Preferred Warehouse Location</Label>
                     <Controller
                       control={control}
+                      name="preferred
