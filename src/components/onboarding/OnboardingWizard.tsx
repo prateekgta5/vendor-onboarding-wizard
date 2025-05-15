@@ -57,8 +57,8 @@ export const OnboardingWizard: React.FC = () => {
       requires_warehousing: false,
       bank_account_type: 'Current',
       payment_method: 'Bank Transfer',
-      payment_terms_agreement: false,
-      payment_terms_satisfaction: false,
+      payment_terms_agreement: true,
+      payment_terms_satisfaction: true,
       branding_offer: false,
     }
   });
