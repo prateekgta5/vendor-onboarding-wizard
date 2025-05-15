@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { vendorFormSchema, VendorFormSchemaType } from '@/validators/vendorFormValidator';
 import { Card } from '@/components/ui/card';
+import { Form } from '@/components/ui/form';
 import { StepsIndicator } from './StepsIndicator';
 import { vendorFormSteps } from '@/config/vendorFormSteps';
 import { WizardStepNavigator } from './WizardStepNavigator';
@@ -37,15 +37,7 @@ export const OnboardingWizard: React.FC = () => {
   } = useVendorFormState('vendor_form_data');
   
   // React Hook Form setup with Zod validation
-  const { 
-    control, 
-    handleSubmit, 
-    watch, 
-    setValue, 
-    getValues,
-    formState: { errors },
-    trigger
-  } = useForm<VendorFormSchemaType>({
+  const form = useForm<VendorFormSchemaType>({
     resolver: zodResolver(vendorFormSchema),
     defaultValues: savedData || {
       business_name: '',
@@ -70,6 +62,16 @@ export const OnboardingWizard: React.FC = () => {
       branding_offer: false,
     }
   });
+  
+  const { 
+    control, 
+    handleSubmit, 
+    watch, 
+    setValue, 
+    getValues,
+    formState: { errors },
+    trigger
+  } = form;
   
   // Watch values for conditional fields
   const watchMsmeStatus = watch('msme_status');
@@ -275,24 +277,26 @@ export const OnboardingWizard: React.FC = () => {
       
       {/* Form card */}
       <Card className="mt-6 p-6 shadow-lg">
-        <form>
-          {/* Current step content */}
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold mb-4">{vendorFormSteps[currentStep - 1]}</h2>
-            {renderCurrentStep()}
-          </div>
-          
-          {/* Navigation controls */}
-          <WizardStepNavigator 
-            currentStep={currentStep}
-            totalSteps={vendorFormSteps.length}
-            onPrevious={goToPreviousStep}
-            onNext={goToNextStep}
-            onSave={saveProgress}
-            isSubmitting={isSubmitting}
-            isLastStep={currentStep === vendorFormSteps.length}
-          />
-        </form>
+        <Form {...form}>
+          <form>
+            {/* Current step content */}
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold mb-4">{vendorFormSteps[currentStep - 1]}</h2>
+              {renderCurrentStep()}
+            </div>
+            
+            {/* Navigation controls */}
+            <WizardStepNavigator 
+              currentStep={currentStep}
+              totalSteps={vendorFormSteps.length}
+              onPrevious={goToPreviousStep}
+              onNext={goToNextStep}
+              onSave={saveProgress}
+              isSubmitting={isSubmitting}
+              isLastStep={currentStep === vendorFormSteps.length}
+            />
+          </form>
+        </Form>
       </Card>
     </div>
   );

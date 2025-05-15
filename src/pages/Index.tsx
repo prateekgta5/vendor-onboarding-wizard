@@ -1,4 +1,5 @@
 
+import React from "react";
 import { VendorOnboardingSystem } from "@/components/VendorOnboardingSystem";
 
 const Index = () => {
@@ -27,23 +28,23 @@ const Index = () => {
               <span className="font-bold text-lg">BaseCampMart</span>
             </div>
           </div>
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">AI-Powered Vendor Onboarding</h1>
-          <p className="mt-2 text-gray-600 max-w-2xl mx-auto">
-            Our intelligent system guides you through the onboarding process, providing 
-            real-time assistance and validation to ensure a smooth experience.
+          
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Vendor Onboarding Portal</h1>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Complete the application below to join BaseCampMart's vendor network.
+            Our AI assistant can help you with any questions throughout the process.
           </p>
         </header>
-        
+
+        {/* Vendor Onboarding System */}
         <VendorOnboardingSystem />
         
         <footer className="mt-16 text-center text-sm text-gray-500">
           <p>© 2025 BaseCampMart. All rights reserved.</p>
           <div className="flex justify-center space-x-4 mt-2">
-            <a href="#" className="text-indigo-600 hover:text-indigo-800 hover:underline">Privacy Policy</a>
-            <a href="#" className="text-indigo-600 hover:text-indigo-800 hover:underline">Terms of Service</a>
-            <a href="mailto:support@basecampmart.com" className="text-indigo-600 hover:text-indigo-800 hover:underline">
-              Contact Support
-            </a>
+            <a href="#" className="hover:text-indigo-600">Privacy Policy</a>
+            <a href="#" className="hover:text-indigo-600">Terms of Service</a>
+            <a href="#" className="hover:text-indigo-600">Contact Support</a>
           </div>
         </footer>
       </div>

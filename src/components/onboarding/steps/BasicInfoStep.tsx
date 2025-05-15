@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { Control, FieldErrors } from 'react-hook-form';
+import { Control, FieldErrors, useFormContext } from 'react-hook-form';
 import { VendorFormSchemaType } from '@/validators/vendorFormValidator';
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { indianStates } from '@/utils/formUtils';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -16,6 +16,8 @@ interface BasicInfoStepProps {
 }
 
 export const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ control, errors }) => {
+  // We need to ensure we're using this component within a FormProvider context
+  // The Form component from shadcn/ui uses FormProvider from react-hook-form
   return (
     <div className="space-y-6">
       <div className="grid md:grid-cols-2 gap-6">

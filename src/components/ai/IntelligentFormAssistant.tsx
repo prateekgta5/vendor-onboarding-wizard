@@ -1,164 +1,137 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-
-interface Message {
-  id: string;
-  content: string;
-  sender: 'user' | 'assistant';
-  timestamp: Date;
-}
+import React, { useState } from 'react';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface IntelligentFormAssistantProps {
   onClose: () => void;
   onReopen: () => void;
 }
 
-export const IntelligentFormAssistant: React.FC<IntelligentFormAssistantProps> = ({ onClose }) => {
-  const [messages, setMessages] = useState<Message[]>([
+export const IntelligentFormAssistant: React.FC<IntelligentFormAssistantProps> = ({
+  onClose,
+  onReopen
+}) => {
+  const [message, setMessage] = useState('');
+  const [conversation, setConversation] = useState<{role: string; content: string}[]>([
     {
-      id: '1',
-      content: 'Hello! I\'m your AI assistant for the vendor onboarding process. I can help with form completion, answer questions, and provide suggestions. How can I help you today?',
-      sender: 'assistant',
-      timestamp: new Date()
+      role: 'assistant',
+      content: 'Hello! I\'m your AI assistant for vendor onboarding. How can I help you today? You can ask me questions about any part of the form, and I\'ll provide guidance.'
     }
   ]);
-  const [input, setInput] = useState('');
-  const [isThinking, setIsThinking] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const handleSendMessage = async () => {
-    if (!input.trim()) return;
+  const handleSendMessage = () => {
+    if (!message.trim()) return;
     
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: input,
-      sender: 'user',
-      timestamp: new Date()
-    };
+    // Add user message to conversation
+    const newConversation = [
+      ...conversation,
+      { role: 'user', content: message }
+    ];
     
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setIsThinking(true);
+    setConversation(newConversation);
+    setIsLoading(true);
     
-    // Simulate AI response (in a real implementation, this would call an AI service)
+    // Simulate AI response
     setTimeout(() => {
-      const aiResponses: {[key: string]: string} = {
-        'gst': 'GST (Goods and Services Tax) registration is required for vendors with annual turnover exceeding ₹20 lakhs (₹10 lakhs for special category states). You'll need to provide your 15-character GSTIN which we can verify automatically.',
-        'msme': 'MSME registration offers benefits like easier access to credit, protection against delayed payments, and various government schemes. It\'s not mandatory but highly recommended.',
-        'documents': 'You\'ll need to upload: 1) Business PAN Card, 2) GST Certificate, 3) Bank Account details with canceled cheque, 4) Owner\'s ID proof, and 5) Business address proof.',
-        'payment': 'We typically process payments within 7-14 days after order fulfillment verification. You can choose between bank transfers, digital wallets, or other payment methods during setup.',
-        'help': 'I can help you with understanding form requirements, document verification, explaining business terms, and provide guidance on optimizing your vendor profile. Just ask me any question!'
-      };
-
-      let aiResponse = 'I\'ll help you with that. Please provide more details about your business needs or check the form instructions for guidance.';
+      // Sample responses based on keywords in user's message
+      let responseText = '';
+      const lowerCaseMessage = message.toLowerCase();
       
-      // Simple keyword matching (would be more sophisticated in a real AI implementation)
-      for (const [keyword, response] of Object.entries(aiResponses)) {
-        if (input.toLowerCase().includes(keyword)) {
-          aiResponse = response;
-          break;
-        }
+      if (lowerCaseMessage.includes('gstin') || lowerCaseMessage.includes('gst')) {
+        responseText = 'GSTIN (Goods and Services Tax Identification Number) is a unique 15-character code assigned to businesses registered under GST. Please ensure you enter a valid GSTIN in the format: 22AAAAA0000A1Z5.';
+      } else if (lowerCaseMessage.includes('pan')) {
+        responseText = 'PAN (Permanent Account Number) is a 10-character alphanumeric identifier issued by the Income Tax Department. The format is AAAPL1234C, where the first 5 are letters, next 4 are numbers, and the last is a letter.';
+      } else if (lowerCaseMessage.includes('aadhaar')) {
+        responseText = 'Aadhaar is a 12-digit unique identification number issued by the UIDAI. Please ensure you enter all 12 digits without any spaces or special characters.';
+      } else if (lowerCaseMessage.includes('document') || lowerCaseMessage.includes('upload')) {
+        responseText = 'For document uploads, please ensure files are in PDF, JPG, or PNG format with a maximum size of 5MB. You\'ll need to upload your GSTIN certificate and may need to upload additional documents based on your business type.';
+      } else if (lowerCaseMessage.includes('payment') || lowerCaseMessage.includes('bank')) {
+        responseText = 'For payment details, please provide your preferred payment method and bank account information. We support Bank Transfer, PayPal, and Razorpay. Your bank details should include account number and IFSC code for verification.';
+      } else if (lowerCaseMessage.includes('address') || lowerCaseMessage.includes('location')) {
+        responseText = 'Please provide your complete business address, including street address, city, state, and postal code. This will be used for invoicing and communication purposes.';
+      } else {
+        responseText = 'Thank you for your question. I\'m here to help with any aspect of the vendor onboarding process. You can ask about GSTIN verification, document requirements, payment terms, or any other part of the application process.';
       }
       
-      const assistantMessage: Message = {
-        id: Date.now().toString(),
-        content: aiResponse,
-        sender: 'assistant',
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, assistantMessage]);
-      setIsThinking(false);
+      setConversation([...newConversation, { role: 'assistant', content: responseText }]);
+      setIsLoading(false);
+      setMessage('');
     }, 1000);
   };
 
   return (
-    <Card className="h-[600px] flex flex-col bg-white shadow-xl overflow-hidden">
-      <div className="bg-indigo-600 text-white p-3 flex justify-between items-center">
-        <div className="flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
-            <path d="M12 8V4H8"></path>
-            <rect width="16" height="12" x="4" y="8" rx="2"></rect>
-            <path d="M2 14h2"></path>
-            <path d="M20 14h2"></path>
-            <path d="M15 13v2"></path>
-            <path d="M9 13v2"></path>
+    <Card className="relative bg-white shadow-md rounded-lg overflow-hidden h-[calc(100vh-14rem)] max-h-[600px] flex flex-col">
+      <div className="p-3 bg-indigo-600 text-white flex justify-between items-center">
+        <h3 className="font-medium">AI Form Assistant</h3>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-white hover:bg-indigo-700"
+          onClick={onClose}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
           </svg>
-          <span className="font-medium">AI Assistant</span>
-        </div>
-        <button onClick={onClose} className="text-white hover:text-gray-200">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 6 6 18"></path>
-            <path d="m6 6 12 12"></path>
-          </svg>
-        </button>
+          <span className="sr-only">Close</span>
+        </Button>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-        {messages.map(message => (
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {conversation.map((msg, i) => (
           <div 
-            key={message.id}
-            className={`mb-4 max-w-[85%] ${message.sender === 'assistant' ? 'mr-auto' : 'ml-auto'}`}
+            key={i} 
+            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
-            <div className={`p-3 rounded-lg ${
-              message.sender === 'assistant' 
-                ? 'bg-white border border-gray-200' 
-                : 'bg-indigo-600 text-white'
-            }`}>
-              {message.content}
-            </div>
-            <div className={`text-xs mt-1 text-gray-500 ${
-              message.sender === 'user' ? 'text-right' : ''
-            }`}>
-              {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            <div 
+              className={`max-w-[80%] rounded-lg p-3 ${
+                msg.role === 'user' 
+                  ? 'bg-indigo-100 text-gray-800' 
+                  : 'bg-gray-100 text-gray-800'
+              }`}
+            >
+              {msg.content}
             </div>
           </div>
         ))}
-        {isThinking && (
-          <div className="mb-4 max-w-[85%] mr-auto">
-            <div className="bg-white border border-gray-200 p-3 rounded-lg flex space-x-2">
-              <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"></div>
-              <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-              <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-gray-100 rounded-lg p-3 text-gray-800 max-w-[80%]">
+              <div className="flex items-center space-x-2">
+                <div className="h-2 w-2 bg-indigo-600 rounded-full animate-bounce"></div>
+                <div className="h-2 w-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="h-2 w-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+              </div>
             </div>
           </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
       
       <div className="p-3 border-t">
-        <div className="flex">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-            placeholder="Ask me anything about the vendor process..."
-            className="flex-1 border rounded-l-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        <div className="flex space-x-2">
+          <Input
+            placeholder="Ask me anything about the form..."
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+            className="flex-1"
           />
           <Button 
             onClick={handleSendMessage}
-            disabled={isThinking || !input.trim()}
-            className="rounded-l-none"
+            className="bg-indigo-600 hover:bg-indigo-700"
+            disabled={!message.trim() || isLoading}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m22 2-7 20-4-9-9-4Z"></path>
-              <path d="M22 2 11 13"></path>
+              <path d="m22 2-7 20-4-9-9-4Z" />
+              <path d="M22 2 11 13" />
             </svg>
           </Button>
-        </div>
-        <div className="mt-2 text-xs text-gray-500 text-center">
-          Ask about GST, MSME benefits, required documents, or any vendor-related questions
         </div>
       </div>
     </Card>
